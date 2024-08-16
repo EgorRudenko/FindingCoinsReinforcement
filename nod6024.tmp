@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://Area2D.gd" id="1_p35gi"]
 [ext_resource type="Texture2D" uid="uid://2n05ho5ycly4" path="res://playerTexture.png" id="1_s3ohq"]
 [ext_resource type="Texture2D" uid="uid://ccby7yy63ohvg" path="res://MoneyTexture.png" id="2_wujyk"]
-[ext_resource type="Script" path="res://Area2D2.gd" id="3_we4bf"]
+[ext_resource type="Script" path="res://StaticBody2D.gd" id="3_lmtyd"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_kgfry"]
 radius = 38.71
@@ -24,15 +24,13 @@ shape = SubResource("CircleShape2D_kgfry")
 [node name="Sprite2D" type="Sprite2D" parent="Area2D"]
 texture = ExtResource("1_s3ohq")
 
-[node name="Area2D2" type="Area2D" parent="."]
-position = Vector2(0, -100)
-script = ExtResource("3_we4bf")
+[node name="StaticBody2D" type="StaticBody2D" parent="."]
+script = ExtResource("3_lmtyd")
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Area2D2"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="StaticBody2D"]
+position = Vector2(-463, -251)
 shape = SubResource("CircleShape2D_p3yxl")
 
-[node name="Sprite2D" type="Sprite2D" parent="Area2D2"]
+[node name="Sprite2D" type="Sprite2D" parent="StaticBody2D"]
+position = Vector2(-464, -251)
 texture = ExtResource("2_wujyk")
-
-[connection signal="area_entered" from="Area2D" to="Area2D" method="_on_area_entered"]
-[connection signal="area_entered" from="Area2D2" to="Area2D2" method="_on_area_entered"]
