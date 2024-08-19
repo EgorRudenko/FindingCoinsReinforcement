@@ -7,13 +7,13 @@ import pickle
 rng = np.random.seed(1)
 
 # some variables important for playing around
-alpha = 1e-4       # learning coefficient (how much we change our weights) if too big the solution will usually diverge
+alpha = 1e-4        # learning coefficient (how much we change our weights) if too big the solution will usually diverge
 gamma = 0.99         # coefficient for discounting reward (bigger coefficient - bigger long-term reward)
 decay_rate = 0.9    # while learning we want to use several summed delta w's to get more stable learning. This shows how fast old delta w's decay (loose importance). It will be used while applying rmsprop
-batch_size = 10      # we generally want to use dw's from several games for more stable learning. Difference with previous is that previous applies on a stage of changing weights and this one kind of before
+batch_size = 100      # we generally want to use dw's from several games for more stable learning. Difference with previous is that previous applies on a stage of changing weights and this one kind of before
 episode = 0         # not really to change. It shows how many games we already played
 toLearn = True
-to_load = True
+to_load = False
 saveFrequency = 500
 
 
@@ -25,16 +25,20 @@ def xavier_init(next, prev) -> np.array:
     w = np.random.uniform(-border, border, size = (prev, next))
     return w
 
-I = 4       # size of input layers
-h1 = 20    # size of first hidden layer
-h2 = 10    # size of second hidden layer
-h3 = 4
+I = 7       # size of input layers
+h1 = 200    # size of first hidden layer
+h2 = 100    # size of second hidden layer
+h3 = 50
+h4 = 14
+h5 = 5
 O = 2       # size of output layer
 
 weights = {"W1":xavier_init(I, h1),
            "W2":xavier_init(h1, h2),
            "W3":xavier_init(h2, h3),
-           "W4":xavier_init(h3, O)
+           "W4":xavier_init(h3, h4),
+           "W5":xavier_init(h4, h5),
+           "W6":xavier_init(h5, O)
            }
 
 def save_dict(di_, filename_):
@@ -68,22 +72,37 @@ def forward_propagation(weights, input):
     h2[h2 < 0] *= 0.1
     h3 = np.dot(weights["W3"], h2)
     h3[h3 < 0] *= 0.1
-    output = np.dot(weights["W4"], h3)
+    h4 = np.dot(weights["W4"], h3)
+    h4[h4 < 0] *= 0.1
+    h5 = np.dot(weights["W5"], h4)
+    h5[h5 < 0] *= 0.1
+    output = np.dot(weights["W6"], h5)
     output = sigmoid(output)
-    return output, [h1, h2, h3]         # we will need not only results, but also hidden states later on
+    return output, [h1, h2, h3, h4, h5]         # we will need not only results, but also hidden states later on
 
 
 
-def backward_propagation(I, h1, h2, h3, grad, weights):
+def backward_propagation(I, h1, h2, h3, h4, h5, grad, weights):
     # Explanation for this: https://ml-cheatsheet.readthedocs.io/en/latest/backpropagation.html
+    dw6 = np.zeros_like(weights["W6"])
+    dw5 = np.zeros_like(weights["W5"])
     dw4 = np.zeros_like(weights["W4"])
     dw3 = np.zeros_like(weights["W3"])
     dw2 = np.zeros_like(weights["W2"])
     dw1 = np.zeros_like(weights["W1"])
     for i in range(len(h1)):
-        dw4 += np.dot(np.array([grad[i]]).T, [h3[i]])
+        # As far as I understand grad (J gradients) replace the derivative(cost function)*derivative(activation fucntion). From backpropagation cheetsheet and gradient in stack exchange formula
+        dw6 += np.dot(np.array([grad[i]]).T, [h5[i]])
+        
+        dh5 = np.dot(grad[i], weights["W6"])
+        dh5[h5[i] < 0] *= 0.1
+        dw5 += np.dot(np.array([dh5]).T, [h4[i]])
 
-        dh3 = np.dot(grad[i], weights["W4"])
+        dh4 = np.dot(dh5, weights["W5"])
+        dh4[h4[i] < 0] *= 0.1
+        dw4 += np.dot(np.array([dh4]).T, [h3[i]])
+
+        dh3 = np.dot(dh4, weights["W4"])
         dh3[h3[i] < 0] *= 0.1                  # apply derivative of third hidden layer
         dw3 += np.dot(np.array([dh3]).T, [h2[i]])
 
@@ -96,7 +115,7 @@ def backward_propagation(I, h1, h2, h3, grad, weights):
         dw1 += np.dot(np.array([dh1]).T, [I[i]])
 
 
-    return {"W1": dw1, "W2": dw2, "W3": dw3, "W4": dw4}
+    return {"W1": dw1, "W2": dw2, "W3": dw3, "W4": dw4, "W5": dw5, "W6":dw6}
 
 
 def discount_reward(rewards, gamma):
@@ -108,7 +127,7 @@ def discount_reward(rewards, gamma):
     running_reward = 0
     for i in range(1,len(rewards)):
         running_reward = running_reward * gamma + rewards[len(rewards)-i]
-        discounted_reward[len(rewards)-i] = running_reward
+        discounted_reward[i] = running_reward
     return discounted_reward
 
 # some vars used here
@@ -117,6 +136,8 @@ lph = []      # log probabilities history
 hsh1 = []               # first hidden layer hidden states history
 hsh2 = []
 hsh3 = []
+hsh4 = []
+hsh5 = []
 rh = []                 # reward history
 gradBuffer = {k:np.zeros_like(v) for k,v in weights.items()}      # for summing gradients between weight updates
 rmspropCache = {k:np.zeros_like(v) for k,v in weights.items()}    # for updating weights with respect to previous experience
@@ -124,44 +145,40 @@ running_reward = None                                               # is needed 
 reward_sum = 0                                                  # is also needed for showing progress only (reward sum over an episode)
 
 def ai(inp):
-    x = np.array(inp[0:4])            # out actual inputs
-    gameOver = inp[4]       # we need it to evaluate reward
-    isCoinGotten = inp[5]   # did we catch a coin on a previous step
+    x = np.array(inp[0:7])            # out actual inputs
+    gameOver = inp[7]       # we need it to evaluate reward
+    isCoinGotten = inp[8]   # did we catch a coin on a previous step
     
     
-    global ih, lph, hsh1, hsh2, hsh3, rh, gradBuffer, rmspropCache, running_reward, reward_sum, alpha, gamma, decay_rate, batch_size, episode, num
+    global ih, lph, hsh1, hsh2, hsh3, hsh4, hsh5, rh, gradBuffer, rmspropCache, running_reward, reward_sum, alpha, gamma, decay_rate, batch_size, episode, num
 
     descision, hidden_states = forward_propagation(weights, x)
+    # a lot of further steps are based on this: https://math.stackexchange.com/questions/2845971/solving-for-policy-gradient-in-reinforcement-learning
+    # notation used can be found on a digital page 19 of this (very good material for reinforcement learning by the way) http://incompleteideas.net/book/RLbook2020.pdf (I even think, that it is actually free and not piracy)
 
     action1 = 1 if descision[0] > np.random.uniform(0, 1) else -1       # we want some definite action. Not only that, we want to "explore" to not stuck in local minima (so I have random choice with different probabilities for different modell certainty levels)
     action2 = 1 if descision[1] > np.random.uniform(0, 1) else -1 
     
-
-    y1 = 1 if action1 == 1 else 0
-    y2 = 1 if action2 == 1 else 0
-   
-    # technically these aren't log probabilities. They are gradients of cross-entropy with respect to output taking into account the fact that descision is processed by sigmoid: https://www.pinecone.io/learn/cross-entropy-loss/
-    # I'm too lazy to rewrite them now
-    logprob = np.array([y1 - descision[0], y2 - descision[1]])
-
+    logprob = np.array([np.log(descision[0] if action1 == 1 else 1 - descision[0]), np.log(descision[1] if action2 == 1 else 1 - descision[1])])
+    #logprob = np.array([np.log])
     lph.append(logprob)
 
     hsh1.append(hidden_states[0])
     hsh2.append(hidden_states[1])
     hsh3.append(hidden_states[2])
+    hsh4.append(hidden_states[3])
+    hsh5.append(hidden_states[4])
     
-
     # now I have to evaluate, how good neural network did. 
     
-    reward = 0.0
+    reward = 0
 
     if gameOver:
-        reward += -5.0
+        reward += -0.1
     elif isCoinGotten:
-        reward += 40.0 
+        reward += 40 
     else:
-        #reward += -0.1
-        reward = 0.0
+        reward += -0.1
 
     reward_sum += reward
     ih.append(x) 
@@ -177,9 +194,10 @@ def ai(inp):
         hsh1 = np.vstack(hsh1)
         hsh2 = np.vstack(hsh2)
         hsh3 = np.vstack(hsh3)
+        hsh4 = np.vstack(hsh4)
+        hsh5 = np.vstack(hsh5)
         lph = np.vstack(lph)
         ih = np.vstack(ih)
-        rh = np.vstack(rh)
 
         discounted_rewards = discount_reward(rh, gamma)
         
@@ -188,16 +206,14 @@ def ai(inp):
 
         discounted_rewards -= np.mean(discounted_rewards)   # mean is just normal average, so we make values be roughtly equally spread under and above zero
         discounted_rewards /= np.std(discounted_rewards)    # np.std is standart deviation. Such operation is called standartizing values, but I'm not sure whether it is relevant here
-        
-        grad = np.multiply(discounted_rewards, lph)                 # gradients of the whole model
 
-        g = backward_propagation(ih, hsh1, hsh2, hsh3, grad, weights)   # gradients of individual weights
-        for k in weights:
+        grad = (discounted_rewards*lph.T).T                 # gradients of the whole model
+
+        g = backward_propagation(ih, hsh1, hsh2, hsh3, hsh4, hsh5, grad, weights)   # gradients of individual weights
+        for k, v in g.items():
             gradBuffer[k] += g[k]       #/batch_size            # I just have feeling that it is best to get average of gradients across batch and not their sum
-        #print(gradBuffer) 
+        
         if episode % batch_size == 0:
-
-            print(descision[0], descision[1])
             print("New Iteration")
             # Explanation/formula: https://ml-cheatsheet.readthedocs.io/en/latest/optimizers.html#rmsprop
             for k,v in weights.items():
@@ -223,6 +239,8 @@ def ai(inp):
         hsh1 = list()
         hsh2 = list()
         hsh3 = list()
+        hsh4 = list()
+        hsh5 = list()
         rh = list()
     return "0 0"
 

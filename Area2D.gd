@@ -2,13 +2,13 @@ extends Area2D
 signal game_over
 
 var speed = 400;
-var visionDist = 300;
+var visionDist = 600;			# not used, cuz it cant learn this way
 var timerTillDeath = 0;
 var maxLifeWithoutMoney = 5;
 var gameOver = 0
 var action = Vector2(0,0)
 var isCoinGotten = 0;
-var timeMultiplier = 3;				# increase it to make game go faster
+var timeMultiplier = 5;				# increase it to make game go faster
 var rng = RandomNumberGenerator.new()
 # Fremdquellecode. Quelle: https://docs.godotengine.org/en/stable/classes/class_websocketpeer.html (Primär)
 # bzw. https://github.com/EgorRudenko/CartPoleDeepReinforcementLearning (Daraus kopierte ich eigentlich, weil ich das schon etwas für meine Bedürfnisse umgeschrieben habe)
@@ -44,7 +44,7 @@ func readActionFromKeyboard():
 		move += Vector2(-1, 0)
 	return move
 
-func check_on_outputs():
+func check_on_outputs():							# not used, even though it would be cool
 	var diff = get_parent().get_node("Area2D2").position - position
 	var dist = diff.length()
 	var visionRays = [0,0,0,0,0]
@@ -73,7 +73,7 @@ func communicate():
 	var state = client.get_ready_state()
 	if state == WebSocketPeer.STATE_OPEN:
 		var rays = check_on_outputs()
-		client.send_text(str(position[0]/550, " ", position[1]/300, " ", rays[0], " ", rays[1], " ", rays[2], " ", rays[3], " ", rays[4], " ", gameOver, " ", isCoinGotten))
+		client.send_text(str(position[0]/550, " ", position[1]/300, " ", get_parent().get_node("Area2D2").position[0]/550, " ", get_parent().get_node("Area2D2").position[1]/300, " ", gameOver, " ", isCoinGotten))
 		action = Vector2(0,0);
 		isCoinGotten = 0;
 		while client.get_available_packet_count():
