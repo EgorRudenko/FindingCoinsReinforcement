@@ -2,19 +2,20 @@ import asyncio
 import numpy as np
 import websockets
 import pickle
+from scipy import stats
 
 
-rng = np.random.seed(1)
+rng = np.random.seed(2)
 
 # some variables important for playing around
-alpha = 1e-4        # learning coefficient (how much we change our weights) if too big the solution will usually diverge
+alpha = 1e-2        # learning coefficient (how much we change our weights) if too big the solution will usually diverge
 gamma = 0.99         # coefficient for discounting reward (bigger coefficient - bigger long-term reward)
 decay_rate = 0.9    # while learning we want to use several summed delta w's to get more stable learning. This shows how fast old delta w's decay (loose importance). It will be used while applying rmsprop
-batch_size = 100      # we generally want to use dw's from several games for more stable learning. Difference with previous is that previous applies on a stage of changing weights and this one kind of before
+batch_size = 5      # we generally want to use dw's from several games for more stable learning. Difference with previous is that previous applies on a stage of changing weights and this one kind of before
 episode = 0         # not really to change. It shows how many games we already played
 toLearn = True
-to_load = False
-saveFrequency = 500
+to_load = True
+saveFrequency = 50
 
 
 def xavier_init(next, prev) -> np.array:
@@ -25,7 +26,7 @@ def xavier_init(next, prev) -> np.array:
     w = np.random.uniform(-border, border, size = (prev, next))
     return w
 
-I = 7       # size of input layers
+I = 4       # size of input layers
 h1 = 200    # size of first hidden layer
 h2 = 100    # size of second hidden layer
 h3 = 50
@@ -57,6 +58,7 @@ except:
     num = 0
 
 if to_load:
+    print(f"loading: model{num-1}")
     weights = load_dict(f'model{num-1}')
 
 
@@ -127,7 +129,7 @@ def discount_reward(rewards, gamma):
     running_reward = 0
     for i in range(1,len(rewards)):
         running_reward = running_reward * gamma + rewards[len(rewards)-i]
-        discounted_reward[i] = running_reward
+        discounted_reward[len(rewards) - i] = running_reward
     return discounted_reward
 
 # some vars used here
@@ -145,9 +147,9 @@ running_reward = None                                               # is needed 
 reward_sum = 0                                                  # is also needed for showing progress only (reward sum over an episode)
 
 def ai(inp):
-    x = np.array(inp[0:7])            # out actual inputs
-    gameOver = inp[7]       # we need it to evaluate reward
-    isCoinGotten = inp[8]   # did we catch a coin on a previous step
+    x = np.array(inp[0:4])            # out actual inputs
+    gameOver = inp[4]       # we need it to evaluate reward
+    isCoinGotten = inp[5]   # did we catch a coin on a previous step
     
     
     global ih, lph, hsh1, hsh2, hsh3, hsh4, hsh5, rh, gradBuffer, rmspropCache, running_reward, reward_sum, alpha, gamma, decay_rate, batch_size, episode, num
@@ -156,11 +158,19 @@ def ai(inp):
     # a lot of further steps are based on this: https://math.stackexchange.com/questions/2845971/solving-for-policy-gradient-in-reinforcement-learning
     # notation used can be found on a digital page 19 of this (very good material for reinforcement learning by the way) http://incompleteideas.net/book/RLbook2020.pdf (I even think, that it is actually free and not piracy)
 
-    action1 = 1 if descision[0] > np.random.uniform(0, 1) else -1       # we want some definite action. Not only that, we want to "explore" to not stuck in local minima (so I have random choice with different probabilities for different modell certainty levels)
-    action2 = 1 if descision[1] > np.random.uniform(0, 1) else -1 
+    #action1 = 1 if descision[0] > np.random.uniform(0.25, 0.75) else -1       # we want some definite action. Not only that, we want to "explore" to not stuck in local minima (so I have random choice with different probabilities for different modell certainty levels)
+    #action2 = 1 if descision[1] > np.random.uniform(0.25, 0.75) else -1 
     
-    logprob = np.array([np.log(descision[0] if action1 == 1 else 1 - descision[0]), np.log(descision[1] if action2 == 1 else 1 - descision[1])])
-    #logprob = np.array([np.log])
+    action1 = 1 if descision[0] > stats.truncnorm.rvs(-1, 1,loc = 0.5, scale = 0.5, size = 1) else -1 
+    action2 = 1 if descision[1] > stats.truncnorm.rvs(-1, 1,loc = 0.5, scale = 0.5, size = 1)  else -1
+
+    y1 = 1 if action1 == 1 else 0
+    y2 = 1 if action2 == 1 else 0
+   
+    # technically these aren't log probabilities. They are gradients of cross-entropy with respect to output taking into account the fact that descision is processed by sigmoid: https://www.pinecone.io/learn/cross-entropy-loss/
+    # I'm too lazy to rewrite them now
+    logprob = np.array([y1 - descision[0], y2 - descision[1]])
+
     lph.append(logprob)
 
     hsh1.append(hidden_states[0])
@@ -171,14 +181,15 @@ def ai(inp):
     
     # now I have to evaluate, how good neural network did. 
     
-    reward = 0
+    reward = 0.0
 
     if gameOver:
-        reward += -0.1
+        reward += -20.0
     elif isCoinGotten:
-        reward += 40 
+        reward += 30.0 
     else:
         reward += -0.1
+    
 
     reward_sum += reward
     ih.append(x) 
@@ -197,6 +208,7 @@ def ai(inp):
         hsh4 = np.vstack(hsh4)
         hsh5 = np.vstack(hsh5)
         lph = np.vstack(lph)
+        rh = np.vstack(rh)
         ih = np.vstack(ih)
 
         discounted_rewards = discount_reward(rh, gamma)
@@ -204,17 +216,17 @@ def ai(inp):
         # it is generally good idea to normalize values in deep learning, because big and small ones can cause gradients to explode of to vanish
         # I did it however because I've seen it done earlier and I'm not sure if previous explanation is good enough
 
-        discounted_rewards -= np.mean(discounted_rewards)   # mean is just normal average, so we make values be roughtly equally spread under and above zero
+        #discounted_rewards -= np.mean(discounted_rewards)   # mean is just normal average, so we make values be roughtly equally spread under and above zero
         discounted_rewards /= np.std(discounted_rewards)    # np.std is standart deviation. Such operation is called standartizing values, but I'm not sure whether it is relevant here
 
-        grad = (discounted_rewards*lph.T).T                 # gradients of the whole model
+        grad = np.multiply(discounted_rewards, lph)                 # gradients of the whole model
 
         g = backward_propagation(ih, hsh1, hsh2, hsh3, hsh4, hsh5, grad, weights)   # gradients of individual weights
         for k, v in g.items():
-            gradBuffer[k] += g[k]       #/batch_size            # I just have feeling that it is best to get average of gradients across batch and not their sum
-        
+            gradBuffer[k] += g[k]       
+
         if episode % batch_size == 0:
-            print("New Iteration")
+            print("New Iteration", descision)
             # Explanation/formula: https://ml-cheatsheet.readthedocs.io/en/latest/optimizers.html#rmsprop
             for k,v in weights.items():
                 # Explanation on given webpage. Difference is plus instead of minus because this is gradient accent and not decent

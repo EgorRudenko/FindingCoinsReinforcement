@@ -1,14 +1,15 @@
 extends Area2D
 signal game_over
 
-var speed = 400;
+var speed = Vector2(0, 0);
+var forceApplied = 5;
 var visionDist = 600;			# not used, cuz it cant learn this way
 var timerTillDeath = 0;
-var maxLifeWithoutMoney = 5;
+var maxLifeWithoutMoney = 100;
 var gameOver = 0
 var action = Vector2(0,0)
 var isCoinGotten = 0;
-var timeMultiplier = 5;				# increase it to make game go faster
+var timeMultiplier = 3;				# increase it to make game go faster
 var rng = RandomNumberGenerator.new()
 # Fremdquellecode. Quelle: https://docs.godotengine.org/en/stable/classes/class_websocketpeer.html (Primär)
 # bzw. https://github.com/EgorRudenko/CartPoleDeepReinforcementLearning (Daraus kopierte ich eigentlich, weil ich das schon etwas für meine Bedürfnisse umgeschrieben habe)
@@ -25,7 +26,8 @@ func move(delta, move):
 		gameOver = 1
 	if abs(position[1]) > 300:
 		gameOver = 1
-	position += move * delta * speed
+	speed += move * delta * forceApplied - speed * delta
+	position += speed
 
 func divArray(a, b):
 	for i in range(len(a)):
@@ -65,6 +67,7 @@ func reinit():
 	timerTillDeath = 0;
 	position = Vector2(0,0)
 	gameOver = 0
+	speed = Vector2(0, 0)
 
 func communicate():
 	# Fremdquellecode (mit einigen Änderungen). Quelle: https://docs.godotengine.org/en/stable/classes/class_websocketpeer.html
@@ -73,7 +76,7 @@ func communicate():
 	var state = client.get_ready_state()
 	if state == WebSocketPeer.STATE_OPEN:
 		var rays = check_on_outputs()
-		client.send_text(str(position[0]/550, " ", position[1]/300, " ", get_parent().get_node("Area2D2").position[0]/550, " ", get_parent().get_node("Area2D2").position[1]/300, " ", gameOver, " ", isCoinGotten))
+		client.send_text(str(position[0]/550 - get_parent().get_node("Area2D2").position[0]/550, " ", position[1]/300 - get_parent().get_node("Area2D2").position[1]/300, " ", gameOver, " ", isCoinGotten))
 		action = Vector2(0,0);
 		isCoinGotten = 0;
 		while client.get_available_packet_count():
@@ -82,7 +85,8 @@ func communicate():
 			action = Vector2(temp[0], temp[1])
 			# Why can't I just construct Vector from an array? And why is vector max 4 elements big? It starts to annoy me
 	elif state == WebSocketPeer.STATE_CLOSED:
-		set_process(false)
+		#set_process(false)
+		pass
 	# Ende Fremdquellecode
 
 func _process(delta):
