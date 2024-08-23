@@ -9,7 +9,8 @@ var maxLifeWithoutMoney = 100;
 var gameOver = 0
 var action = Vector2(0,0)
 var isCoinGotten = 0;
-var timeMultiplier = 3;				# increase it to make game go faster
+var timeMultiplier = 6;				# increase it to make game go faster
+var isBorderTouched = 0;
 var rng = RandomNumberGenerator.new()
 # Fremdquellecode. Quelle: https://docs.godotengine.org/en/stable/classes/class_websocketpeer.html (Primär)
 # bzw. https://github.com/EgorRudenko/CartPoleDeepReinforcementLearning (Daraus kopierte ich eigentlich, weil ich das schon etwas für meine Bedürfnisse umgeschrieben habe)
@@ -23,8 +24,10 @@ func _ready():
 
 func move(delta, move):
 	if abs(position[0]) > 530:
+		isBorderTouched = 1
 		gameOver = 1
 	if abs(position[1]) > 300:
+		isBorderTouched = 1
 		gameOver = 1
 	speed += move * delta * forceApplied - speed * delta
 	position += speed
@@ -68,6 +71,7 @@ func reinit():
 	position = Vector2(0,0)
 	gameOver = 0
 	speed = Vector2(0, 0)
+	isBorderTouched = 0
 
 func communicate():
 	# Fremdquellecode (mit einigen Änderungen). Quelle: https://docs.godotengine.org/en/stable/classes/class_websocketpeer.html
@@ -76,7 +80,7 @@ func communicate():
 	var state = client.get_ready_state()
 	if state == WebSocketPeer.STATE_OPEN:
 		var rays = check_on_outputs()
-		client.send_text(str(position[0]/550 - get_parent().get_node("Area2D2").position[0]/550, " ", position[1]/300 - get_parent().get_node("Area2D2").position[1]/300, " ", gameOver, " ", isCoinGotten))
+		client.send_text(str(position[0]/550, " ", get_parent().get_node("Area2D2").position[0]/550, " ", position[1]/300, " ", get_parent().get_node("Area2D2").position[1]/300, " ", speed[0]/5, " ", speed[1]/5, " ", gameOver, " ", isCoinGotten, " ", isBorderTouched))
 		action = Vector2(0,0);
 		isCoinGotten = 0;
 		while client.get_available_packet_count():

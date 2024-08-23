@@ -3,17 +3,18 @@ import numpy as np
 import websockets
 import pickle
 
-rng = np.random.seed(1)
+rng = np.random.seed(2)
 
 # some variables important for playing around
 alpha = 1e-4       # learning coefficient (how much we change our weights) if too big the solution will usually diverge
 gamma = 0.99         # coefficient for discounting reward (bigger coefficient - bigger long-term reward)
-decay_rate = 0.99    # while learning we want to use several summed delta w's to get more stable learning. This shows how fast old delta w's decay (loose importance). It will be used while applying rmsprop
-batch_size = 10      # we generally want to use dw's from several games for more stable learning. Difference with previous is that previous applies on a stage of changing weights and this one kind of before
+decay_rate = 0.9    # while learning we want to use several summed delta w's to get more stable learning. This shows how fast old delta w's decay (loose importance). It will be used while applying rmsprop
+batch_size = 30      # we generally want to use dw's from several games for more stable learning. Difference with previous is that previous applies on a stage of changing weights and this one kind of before
 episode = 0         # not really to change. It shows how many games we already played
 toLearn = True
-to_load = False
+to_load = True
 saveFrequency = 100
+modelToLoad = None # 16
 
 
 def xavier_init(next, prev) -> np.array:
@@ -24,7 +25,7 @@ def xavier_init(next, prev) -> np.array:
     w = np.random.uniform(-border, border, size = (prev, next))
     return w
 
-I = 2       # size of input layers
+I = 6       # size of input layers
 h1 = 20    # size of first hidden layer
 h2 = 10    # size of second hidden layer
 h3 = 4
@@ -46,12 +47,16 @@ def load_dict(filename_):
         ret_di = pickle.load(f)
     return ret_di
 
-try:
-    num = np.load("num.npy")
-except:
-    num = 0
+if modelToLoad != None:
+    num = modelToLoad + 1
+else:
+    try:
+        num = np.load("num.npy")
+    except:
+        num = 0
 
 if to_load:
+    print(f'model{num-1}')
     weights = load_dict(f'model{num-1}')
 
 
@@ -62,7 +67,7 @@ def sigmoid(a):                 # Normally I use ReLU (on hidden layers), but it
 
 def forward_propagation(weights, input):
     h1 = np.dot(weights["W1"], input)
-    #h1[h1 < 0] *= 0.1                   # leaky ReLU function
+    h1[h1 < 0] *= 0.1                   # leaky ReLU function
     h2 = np.dot(weights["W2"], h1)
     h2[h2 < 0] *= 0.1
     h3 = np.dot(weights["W3"], h2)
@@ -91,7 +96,7 @@ def backward_propagation(I, h1, h2, h3, grad, weights):
         dw2 += np.dot(np.array([dh2]).T, [h1[i]])
 
         dh1 = np.dot(dh2, weights["W2"])
-        #dh1[h1[i] < 0] *= 0.1
+        dh1[h1[i] < 0] *= 0.1
         dw1 += np.dot(np.array([dh1]).T, [I[i]])
 
 
@@ -123,10 +128,10 @@ running_reward = None                                               # is needed 
 reward_sum = 0                                                  # is also needed for showing progress only (reward sum over an episode)
 
 def ai(inp):
-    x = np.array(inp[0:2])            # out actual inputs
-    gameOver = inp[2]       # we need it to evaluate reward
-    isCoinGotten = inp[3]   # did we catch a coin on a previous step
-    
+    x = np.array(inp[0:6])            # out actual inputs
+    gameOver = inp[6]       # we need it to evaluate reward
+    isCoinGotten = inp[7]   # did we catch a coin on a previous step
+    isBorderTouched = inp[8] 
     
     global ih, lph, hsh1, hsh2, hsh3, rh, gradBuffer, rmspropCache, running_reward, reward_sum, alpha, gamma, decay_rate, batch_size, episode, num
 
@@ -139,8 +144,8 @@ def ai(inp):
     y1 = 1 if action1 == 1 else 0
     y2 = 1 if action2 == 1 else 0
    
-    # technically these aren't log probabilities. They are gradients of cross-entropy with respect to output taking into account the fact that descision is processed by sigmoid: https://www.pinecone.io/learn/cross-entropy-loss/
-    # I'm too lazy to rewrite them now
+    # technically these aren't log probabilities. They are derivatives of cross-entropy with respect to output taking into account the fact that descision is processed by sigmoid: https://www.pinecone.io/learn/cross-entropy-loss/
+    # I'm too lazy to rewrite their names now
     logprob = np.array([y1 - descision[0], y2 - descision[1]])
 
     lph.append(logprob)
@@ -154,13 +159,12 @@ def ai(inp):
     
     reward = 0.0
 
-    if gameOver:
-        reward += -5.0
-    elif isCoinGotten:
-        reward += 10.0 
+    if isCoinGotten:
+        reward += 20.0
+    elif isBorderTouched:
+        reward += -10.0
     else:
-        #reward += -0.1
-        reward += -0.1
+        reward -= 0.01
 
     reward_sum += reward
     ih.append(x) 
@@ -185,7 +189,7 @@ def ai(inp):
         # it is generally good idea to normalize values in deep learning, because big and small ones can cause gradients to explode of to vanish
         # I did it however because I've seen it done earlier and I'm not sure if previous explanation is good enough
 
-        #discounted_rewards -= np.mean(discounted_rewards)   # mean is just normal average, so we make values be roughtly equally spread under and above zero
+        discounted_rewards -= np.mean(discounted_rewards)   # mean is just normal average, so we make values be roughtly equally spread under and above zero
         discounted_rewards /= np.std(discounted_rewards)    # np.std is standart deviation. Such operation is called standartizing values, but I'm not sure whether it is relevant here
         
         grad = np.multiply(discounted_rewards, lph)                 # gradients of the whole model
@@ -208,7 +212,7 @@ def ai(inp):
         if running_reward != None:
             running_reward = 0.99*running_reward + 0.01 * reward_sum
         else:
-            running_reward = reward_sum
+            running_reward = 10.0              # Becouse I want to see wether it grows or just average becomes closer to real value if first reward is too negative
         print(f"Episode: {episode}      Reward in this episode: {reward_sum}        Approximate average current level reward: {running_reward}")
         
         if episode % saveFrequency == 0:
