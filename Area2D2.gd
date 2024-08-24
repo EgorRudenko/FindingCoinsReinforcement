@@ -1,9 +1,12 @@
 extends Area2D
 
 var rng = RandomNumberGenerator.new()
+# These are a bit smaller than window, so it doesnt have to do too much learning at not hitting walls
+var xRange = 530;
+var yRange = 280;
 
 func randPos():
-	position = Vector2(rng.randi_range(-550,550), rng.randi_range(-300, 300))
+	position = Vector2(rng.randi_range(-xRange,xRange), rng.randi_range(-280, 280))
 
 func _on_area_entered(area):
 	while (get_parent().get_node("Area2D").position - position).length() < 60:
