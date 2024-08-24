@@ -1,7 +1,7 @@
 # Finding Coins Reinforcement
  Das ist ein Projekt für die Schule
- Die Aufgabe kann durch Effektivere Methoden sowohl aus Machine Learning als auch aus anderen Branchen gelöst.
- Also das einzige Ziel davon ist einfach KI zu versuchen
+ Die Aufgabe kann durch effektivere Methoden sowohl aus Machine Learning als auch aus anderen Branchen gelöst werden.
+ Also das einzige Ziel von diesem Projekt ist einfach ein Versuch KI zu benutzen
 
  # Nutzen
  Die nötige Python Module sind websockets, numpy und scipy. Die alle sind durch ```pip install -r requirements.txt``` runterlädtbar
