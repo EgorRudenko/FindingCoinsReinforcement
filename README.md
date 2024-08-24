@@ -4,7 +4,7 @@
  Also das einzige Ziel von diesem Projekt ist einfach ein Versuch KI zu benutzen
 
  # Nutzen
- Die nötige Python Module sind websockets, numpy und scipy. Die alle sind durch ```pip install -r requirements.txt``` runterlädtbar
+ Die nötige Python Module sind websockets, numpy und scipy. Die alle sind durch ```pip install -r requirements.txt``` im python Ordner runterlädtbar
  Man braucht auch [godot](https://godotengine.org/) engine</br>
  Erst soll man main.py (**nicht biggerMain.py**, weil das nicht trainiert ist) öffnen, dann godot projekt starten</br>
 
@@ -26,7 +26,7 @@
  
  # To run 
  One needs websockets, numpy and scipy modules in python they are also can be found in requirements.txt</br>
- ```pip install -r requirements.txt```</br>
+ ```pip install -r requirements.txt``` in python directory</br>
  First run main.py script from python folder (**not biggerMain.py**, because it's not trained) 
  Then [godot](https://godotengine.org/) project</br>
 
