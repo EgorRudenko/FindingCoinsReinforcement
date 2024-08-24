@@ -1,7 +1,9 @@
 # Finding Coins Reinforcement
  Das ist ein Projekt für die Schule
  Die Aufgabe kann durch effektivere Methoden sowohl aus Machine Learning als auch aus anderen Branchen gelöst werden.
- Also das einzige Ziel von diesem Projekt ist einfach ein Versuch KI zu benutzen
+ Also das einzige Ziel von diesem Projekt ist einfach ein Versuch KI zu benutzen.
+ Der KI kann hier auf dem Feld sich bewegen. Sein Ziel ist die Münzen zu sammeln. Das Spiel ansicht ist im godot geschrieben und die KI in python.
+ Als Modelle nutze ich hier Neural Network mit Lehrmethoden aus Reinforcement learning
 
  # Nutzen
  Die nötige Python Module sind websockets, numpy und scipy. Die alle sind durch ```pip install -r requirements.txt``` im python Ordner runterlädtbar
@@ -16,7 +18,7 @@
 
  main.py</br>
  toLearn</br>
- toLoad</br>
+ toLoad -> ob shon trainierte Wiegen geladen werden müssen</br>
  # Quellen
  Die klenere Quellen sind in der Code als Kommentare geschrieben</br>
  Ich habe mein andere Projekt zum Vergleichen genutzt [cart pole](https://github.com/EgorRudenko/CartPoleDeepReinforcementLearning), welche auf einen [anderen](https://github.com/numpy/numpy-tutorials/blob/main/content/tutorial-deep-reinforcement-learning-with-pong-from-pixels.md) basiert ist
@@ -38,7 +40,7 @@
 
  main.py</br>
  toLearn</br>
- toLoad</br>
+ toLoad -> wether already trained weights should be loaded</br>
 
  # Sources
  The minor sources of information and code are mentioned in comments in code</br>
