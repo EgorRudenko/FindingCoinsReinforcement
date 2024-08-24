@@ -19,7 +19,7 @@
  toLoad</br>
  # Quellen
  Die klenere Quellen sind in der Code als Kommentare geschrieben</br>
- Ich habe mein andere Projekt zum vergleichen genutzt [cart pole](https://github.com/EgorRudenko/CartPoleDeepReinforcementLearning), welche auf einen [anderen](https://github.com/numpy/numpy-tutorials/blob/main/content/tutorial-deep-reinforcement-learning-with-pong-from-pixels.md) basiert ist
+ Ich habe mein andere Projekt zum Vergleichen genutzt [cart pole](https://github.com/EgorRudenko/CartPoleDeepReinforcementLearning), welche auf einen [anderen](https://github.com/numpy/numpy-tutorials/blob/main/content/tutorial-deep-reinforcement-learning-with-pong-from-pixels.md) basiert ist
 # English 
  School project
  The task is probably most efficiantly solved by other methods, but [+AI](https://www.reddit.com/r/mathmemes/comments/1el7jy2/since_too_many_people_are_asking_heres_the/)
