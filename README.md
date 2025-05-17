@@ -1,5 +1,4 @@
 # Finding Coins Reinforcement
- Das ist ein Projekt für die Schule
  Die Aufgabe kann durch effektivere Methoden sowohl aus Machine Learning als auch aus anderen Branchen gelöst werden.
  Also das einzige Ziel von diesem Projekt ist einfach ein Versuch KI zu benutzen.
  Der KI kann hier auf dem Feld sich bewegen. Sein Ziel ist die Münzen zu sammeln. Das Spiel ansicht ist im godot geschrieben und die KI in python.
@@ -20,10 +19,9 @@
  toLearn</br>
  toLoad -> ob shon trainierte Wiegen geladen werden müssen</br>
  # Quellen
- Die klenere Quellen sind in der Code als Kommentare geschrieben</br>
+ Die kleinere Quellen sind in der Code als Kommentare geschrieben</br>
  Ich habe mein andere Projekt zum Vergleichen genutzt [cart pole](https://github.com/EgorRudenko/CartPoleDeepReinforcementLearning), welche auf einen [anderen](https://github.com/numpy/numpy-tutorials/blob/main/content/tutorial-deep-reinforcement-learning-with-pong-from-pixels.md) basiert ist
 # English 
- School project
  The task is probably most efficiantly solved by other methods, but [+AI](https://www.reddit.com/r/mathmemes/comments/1el7jy2/since_too_many_people_are_asking_heres_the/)
  
  # To run 
